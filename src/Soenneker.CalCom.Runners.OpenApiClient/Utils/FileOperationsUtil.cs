@@ -60,10 +60,13 @@ public sealed class FileOperationsUtil : IFileOperationsUtil
 
         await _fileUtil.DeleteIfExists(targetFilePath, cancellationToken: cancellationToken);
 
-        string openApiDocumentUrl = _configuration["CalCom:ClientGenerationUrl"] ?? "https://cal.com/docs/api-reference/v1/openapi-v1.json";
+        string openApiDocumentUrl = _configuration["CalCom:ClientGenerationUrl"] ?? "https://cal.com/docs/api-reference/v2/openapi.json";
 
         string? filePath = await _fileDownloadUtil.Download(openApiDocumentUrl,
             targetFilePath, fileExtension: ".json", cancellationToken: cancellationToken);
+        if (string.IsNullOrWhiteSpace(filePath))
+            throw new InvalidOperationException("The Cal.com API v2 OpenAPI specification could not be downloaded.");
+
         await _openApiFixer.Fix(targetFilePath, fixedFilePath, cancellationToken);
 
 
@@ -149,10 +152,7 @@ public sealed class FileOperationsUtil : IFileOperationsUtil
         bool successful = await _dotnetUtil.Build(projFilePath, true, "Release", false, cancellationToken: cancellationToken);
 
         if (!successful)
-        {
-            _logger.LogError("Build was not successful, exiting...");
-            return;
-        }
+            throw new InvalidOperationException("The generated Cal.com API v2 client did not build successfully.");
 
         string gitHubToken = EnvironmentUtil.GetVariableStrict("GH__TOKEN");
 
